@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Scanner App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    'orange-primary': '#FF9500',
+                    'orange-secondary': '#FFB800',
+                    'dark-panel': '#2C2C2E',
+                    'dark-secondary': '#3A3A3C'
+                },
+                fontFamily: {
+                    'system': ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif']
+                }
+            }
+        }
+    };
+    </script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #FF9500 0%, #FFB800 100%);
+        }
+        
+        .scanner-icon {
+            position: relative;
+        }
+        
+        .scanner-corners::before,
+        .scanner-corners::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid white;
+        }
+        
+        .scanner-corners::before {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 8px 0 0 0;
+        }
+        
+        .scanner-corners::after {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+            border-radius: 0 8px 0 0;
+        }
+        
+        .scanner-corners {
+            position: relative;
+        }
+        
+        .scanner-corners .bottom-corners::before,
+        .scanner-corners .bottom-corners::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid white;
+        }
+        
+        .scanner-corners .bottom-corners::before {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+            border-radius: 0 0 0 8px;
+        }
+        
+        .scanner-corners .bottom-corners::after {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+            border-radius: 0 0 8px 0;
+        }
+
+        .scan-line {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, white, transparent);
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100px); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100px); opacity: 0; }
+        }
+
+        .button-hover {
+            transition: all 0.2s ease;
+        }
+        
+        .button-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .floating-panel {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        #scanner-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 1000;
+            display: none;
+        }
+
+        #qr-reader {
+            width: 100%;
+            height: 100%;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 250px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 20px;
+            z-index: 1001;
+        }
+
+        .camera-overlay::before,
+        .camera-overlay::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 4px solid #FF9500;
+        }
+
+        .camera-overlay::before {
+            top: -2px;
+            left: -2px;
+            border-right: none;
+            border-bottom: none;
+            border-radius: 20px 0 0 0;
+        }
+
+        .camera-overlay::after {
+            top: -2px;
+            right: -2px;
+            border-left: none;
+            border-bottom: none;
+            border-radius: 0 20px 0 0;
+        }
+    </style>
+</head>
+<body class="font-system min-h-screen overflow-hidden">
+    <!-- @COMPONENT: MainScreen [Initial welcome screen] -->
+    <div id="main-screen" class="gradient-bg min-h-screen flex flex-col relative">
+        <!-- Header section with QR icon -->
+        <div class="flex-1 flex items-center justify-center px-6">
+            <div class="text-center">
+                <!-- QR Scanner Icon with corner brackets -->
+                <div class="scanner-icon mb-8">
+                    <div class="scanner-corners w-32 h-32 mx-auto relative">
+                        <div class="w-full h-full bg-white rounded-2xl flex items-center justify-center">
+                            <!-- QR Code Grid Pattern -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="w-6 h-6 bg-gray-800 rounded"></div>
+                                <div class="w-6 h-6 bg-transparent border-2 border-gray-800"></div>
+                                <div class="w-6 h-6 bg-gray-800 rounded"></div>
+                                <div class="w-6 h-6 bg-transparent border-2 border-gray-800"></div>
+                                <div class="w-6 h-6 bg-gray-800"></div>
+                                <div class="w-6 h-6 bg-transparent border-2 border-gray-800"></div>
+                                <div class="w-6 h-6 bg-gray-800 rounded"></div>
+                                <div class="w-6 h-6 bg-transparent border-2 border-gray-800"></div>
+                                <div class="w-6 h-6 bg-gray-800 rounded"></div>
+                            </div>
+                        </div>
+                        <div class="bottom-corners"></div>
+                    </div>
+                </div>
+                
+                <!-- App title or instruction text could go here -->
+                <div class="text-white/80 text-lg font-medium">
+                    <!-- @STATE: appTitle:string = "Scan QR Codes Instantly" -->
+                    <span data-bind="appTitle" data-mock="true">Scan QR Codes Instantly</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Action Panel -->
+        <div class="floating-panel bg-dark-panel rounded-t-3xl p-6 pb-8">
+            <div class="text-center mb-8">
+                <h2 class="text-white text-2xl font-bold mb-2">Get Started</h2>
+                <p class="text-white/70 text-sm">Point your camera at any QR code to scan</p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="space-y-4">
+                <!-- Let's Go Button -->
+                <button 
+                    id="start-scan-btn"
+                    data-event="click:startScanning" 
+                    data-implementation="Should request camera permission and start scanner"
+                    class="button-hover w-full bg-orange-primary text-white py-4 px-6 rounded-2xl font-semibold text-lg flex items-center justify-center space-x-3 shadow-lg"
+                >
+                    <span>Let's Go</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                
+                <!-- Google Login Button -->
+                <button 
+                    id="google-login-btn"
+                    data-event="click:loginWithGoogle" 
+                    data-implementation="Should integrate with Google OAuth"
+                    class="button-hover w-full bg-orange-secondary text-dark-panel py-4 px-6 rounded-2xl font-semibold text-lg flex items-center justify-center space-x-3 shadow-lg"
+                >
+                    <i class="fab fa-google"></i>
+                    <span>Login With Google</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: MainScreen -->
+
+    <!-- @COMPONENT: ScannerScreen [Camera scanning interface] -->
+    <div id="scanner-container">
+        <!-- Camera view -->
+        <div id="qr-reader"></div>
+        
+        <!-- Scanner overlay with corner guides -->
+        <div class="camera-overlay">
+            <div class="scan-line absolute top-0 left-0 w-full"></div>
+        </div>
+        
+        <!-- Scanner controls -->
+        <div class="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent">
+            <div class="text-center mb-6">
+                <p class="text-white text-lg font-medium">Position QR code within the frame</p>
+                <p class="text-white/70 text-sm mt-1">Scanning will happen automatically</p>
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button 
+                    id="close-scanner-btn"
+                    class="bg-white/20 backdrop-blur-sm text-white py-3 px-8 rounded-2xl font-medium flex items-center space-x-2"
+                >
+                    <i class="fas fa-times"></i>
+                    <span>Close</span>
+                </button>
+                
+                <button 
+                    id="toggle-flash-btn"
+                    class="bg-orange-primary text-white py-3 px-8 rounded-2xl font-medium flex items-center space-x-2"
+                >
+                    <i class="fas fa-flashlight"></i>
+                    <span>Flash</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: ScannerScreen -->
+
+    <!-- @COMPONENT: ResultModal [Display scan results] -->
+    <div id="result-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-end">
+        <div class="bg-white rounded-t-3xl w-full p-6 transform translate-y-full transition-transform duration-300" id="result-content">
+            <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-6"></div>
+            
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check text-green-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-2">QR Code Scanned!</h3>
+                <p class="text-gray-600">Here's what we found:</p>
+            </div>
+            
+            <!-- Scanned content -->
+            <div class="bg-gray-50 rounded-2xl p-4 mb-6">
+                <p id="scanned-text" class="text-gray-800 font-mono text-sm break-all" data-mock="true">
+                    <!-- @DATA_BIND: scannedResult -->
+                    https://example.com/sample-qr-content
+                </p>
+            </div>
+            
+            <!-- Action buttons -->
+            <div class="space-y-3">
+                <button 
+                    id="open-result-btn"
+                    class="w-full bg-orange-primary text-white py-4 px-6 rounded-2xl font-semibold flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-external-link-alt"></i>
+                    <span>Open Link</span>
+                </button>
+                
+                <div class="flex space-x-3">
+                    <button 
+                        id="copy-result-btn"
+                        class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center justify-center space-x-2"
+                    >
+                        <i class="fas fa-copy"></i>
+                        <span>Copy</span>
+                    </button>
+                    
+                    <button 
+                        id="share-result-btn"
+                        class="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium flex items-center justify-center space-x-2"
+                    >
+                        <i class="fas fa-share-alt"></i>
+                        <span>Share</span>
+                    </button>
+                </div>
+                
+                <button 
+                    id="scan-again-btn"
+                    class="w-full bg-white border-2 border-orange-primary text-orange-primary py-3 px-6 rounded-2xl font-semibold"
+                >
+                    Scan Another Code
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: ResultModal -->
+
+    <!-- @COMPONENT: PermissionModal [Camera permission request] -->
+    <div id="permission-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden flex items-center justify-center p-6">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center">
+            <div class="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-camera text-orange-primary text-3xl"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-900 mb-3">Camera Access Required</h3>
+            <p class="text-gray-600 mb-8 leading-relaxed">
+                We need access to your camera to scan QR codes. This helps us provide you with the best scanning experience.
+            </p>
+            
+            <div class="space-y-3">
+                <button 
+                    id="allow-camera-btn"
+                    class="w-full bg-orange-primary text-white py-4 px-6 rounded-2xl font-semibold"
+                >
+                    Allow Camera Access
+                </button>
+                
+                <button 
+                    id="deny-camera-btn"
+                    class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-medium"
+                >
+                    Not Now
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: PermissionModal -->
+
+    <!-- @COMPONENT: ErrorModal [Error handling display] -->
+    <div id="error-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 hidden flex items-center justify-center p-6">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center">
+            <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i class="fas fa-exclamation-triangle text-red-600 text-3xl"></i>
+            </div>
+            
+            <h3 class="text-xl font-bold text-gray-900 mb-3">Oops! Something went wrong</h3>
+            <p id="error-message" class="text-gray-600 mb-8 leading-relaxed" data-mock="true">
+                Unable to access camera. Please check your permissions and try again.
+            </p>
+            
+            <div class="space-y-3">
+                <button 
+                    id="retry-btn"
+                    class="w-full bg-orange-primary text-white py-4 px-6 rounded-2xl font-semibold"
+                >
+                    Try Again
+                </button>
+                
+                <button 
+                    id="close-error-btn"
+                    class="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-xl font-medium"
+                >
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: ErrorModal -->
+
+    <script>
+    (function() {
+        // @STATE: Various app states
+        let html5QrCode = null;
+        let isScanning = false;
+        let hasPermission = false;
+
+        // DOM Elements
+        const startScanBtn = document.getElementById('start-scan-btn');
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const scannerContainer = document.getElementById('scanner-container');
+        const closeScannerBtn = document.getElementById('close-scanner-btn');
+        const toggleFlashBtn = document.getElementById('toggle-flash-btn');
+        const resultModal = document.getElementById('result-modal');
+        const resultContent = document.getElementById('result-content');
+        const scannedText = document.getElementById('scanned-text');
+        const permissionModal = document.getElementById('permission-modal');
+        const errorModal = document.getElementById('error-modal');
+        const errorMessage = document.getElementById('error-message');
+
+        // @FUNCTIONALITY: Initialize app and event listeners
+        function initializeApp() {
+            // Start scanning button
+            startScanBtn.addEventListener('click', handleStartScan);
+            
+            // Google login button  
+            googleLoginBtn.addEventListener('click', handleGoogleLogin);
+            
+            // Scanner controls
+            closeScannerBtn.addEventListener('click', stopScanning);
+            toggleFlashBtn.addEventListener('click', toggleFlash);
+            
+            // Modal controls
+            document.getElementById('allow-camera-btn')?.addEventListener('click', requestCameraPermission);
+            document.getElementById('deny-camera-btn')?.addEventListener('click', hidePermissionModal);
+            document.getElementById('close-error-btn')?.addEventListener('click', hideErrorModal);
+            document.getElementById('retry-btn')?.addEventListener('click', retryCamera);
+            
+            // Result modal controls
+            document.getElementById('scan-again-btn')?.addEventListener('click', scanAgain);
+            document.getElementById('copy-result-btn')?.addEventListener('click', copyResult);
+            document.getElementById('share-result-btn')?.addEventListener('click', shareResult);
+            document.getElementById('open-result-btn')?.addEventListener('click', openResult);
+        }
+
+        // @FUNCTIONALITY: Handle start scan button click
+        function handleStartScan() {
+            if (!hasPermission) {
+                showPermissionModal();
+            } else {
+                startScanning();
+            }
+        }
+
+        // @FUNCTIONALITY: Google OAuth integration placeholder
+        function handleGoogleLogin() {
+            // TODO: Implement Google OAuth integration
+            console.log('Google login clicked - implement OAuth flow');
+            
+            // Mock login for demo
+            showTemporaryMessage('Google login would be implemented here');
+        }
+
+        // @FUNCTIONALITY: Show permission modal
+        function showPermissionModal() {
+            permissionModal.classList.remove('hidden');
+        }
+
+        function hidePermissionModal() {
+            permissionModal.classList.add('hidden');
+        }
+
+        // @FUNCTIONALITY: Request camera permission
+        async function requestCameraPermission() {
+            hidePermissionModal();
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                stream.getTracks().forEach(track => track.stop()); // Stop the test stream
+                hasPermission = true;
+                startScanning();
+            } catch (error) {
+                showError('Camera access denied. Please allow camera access in your browser settings.');
+            }
+        }
+
+        // @FUNCTIONALITY: Start QR code scanning
+        async function startScanning() {
+            try {
+                scannerContainer.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+                
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("qr-reader");
+                }
+
+                const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                    // Handle successful scan
+                    stopScanning();
+                    showResult(decodedText);
+                };
+
+                const config = {
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0
+                };
+
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    qrCodeSuccessCallback
+                );
+                
+                isScanning = true;
+            } catch (error) {
+                console.error('Error starting scanner:', error);
+                showError('Failed to start camera. Please try again.');
+                scannerContainer.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // @FUNCTIONALITY: Stop scanning
+        async function stopScanning() {
+            if (html5QrCode && isScanning) {
+                try {
+                    await html5QrCode.stop();
+                    isScanning = false;
+                } catch (error) {
+                    console.error('Error stopping scanner:', error);
+                }
+            }
+            
+            scannerContainer.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // @FUNCTIONALITY: Toggle camera flash
+        function toggleFlash() {
+            // TODO: Implement flash toggle functionality
+            console.log('Flash toggle - implement camera flash control');
+            
+            const flashIcon = toggleFlashBtn.querySelector('i');
+            if (flashIcon.classList.contains('fa-flashlight')) {
+                flashIcon.classList.replace('fa-flashlight', 'fa-bolt');
+                toggleFlashBtn.style.background = '#FFB800';
+            } else {
+                flashIcon.classList.replace('fa-bolt', 'fa-flashlight');
+                toggleFlashBtn.style.background = '#FF9500';
+            }
+        }
+
+        // @FUNCTIONALITY: Show scan result
+        function showResult(text) {
+            scannedText.textContent = text;
+            resultModal.classList.remove('hidden');
+            
+            // Animate modal appearance
+            setTimeout(() => {
+                resultContent.style.transform = 'translateY(0)';
+            }, 50);
+        }
+
+        // @FUNCTIONALITY: Hide result modal
+        function hideResult() {
+            resultContent.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                resultModal.classList.add('hidden');
+            }, 300);
+        }
+
+        // @FUNCTIONALITY: Result actions
+        function scanAgain() {
+            hideResult();
+            setTimeout(() => {
+                startScanning();
+            }, 300);
+        }
+
+        function copyResult() {
+            const text = scannedText.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                showTemporaryMessage('Copied to clipboard!');
+            });
+        }
+
+        function shareResult() {
+            const text = scannedText.textContent;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'QR Code Result',
+                    text: text
+                });
+            } else {
+                copyResult(); // Fallback to copy
+            }
+        }
+
+        function openResult() {
+            const text = scannedText.textContent;
+            if (text.startsWith('http')) {
+                window.open(text, '_blank');
+            } else {
+                showTemporaryMessage('Not a valid URL');
+            }
+        }
+
+        // @FUNCTIONALITY: Error handling
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorModal.classList.remove('hidden');
+        }
+
+        function hideErrorModal() {
+            errorModal.classList.add('hidden');
+        }
+
+        function retryCamera() {
+            hideErrorModal();
+            requestCameraPermission();
+        }
+
+        // @FUNCTIONALITY: Utility functions
+        function showTemporaryMessage(message) {
+            // TODO: Implement toast notification system
+            console.log('Message:', message);
+        }
+
+        // Initialize app when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Handle back button on scanner screen
+        window.addEventListener('popstate', function(event) {
+            if (isScanning) {
+                stopScanning();
+            }
+        });
+    })();
+    </script>
+</body>
+</html>
